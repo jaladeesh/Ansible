@@ -1,4 +1,4 @@
 [slave1]
-ansible_host=13.202.146.231
+jenkins-nexus ansible_host=13.202.146.231
 [slave2]
-ansible_host=43.204.205.183
+prometheus-grafana ansible_host=43.204.205.183
