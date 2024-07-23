@@ -52,10 +52,10 @@
         path: "/nexus-3.70.1-02/bin/nexus.rc"
         line: "run_as_user=nexus"
 
-    - name: to start nexus manually
-      args:
-        chdir: /nexus-3.70.1-02/bin
-      command: ./nexus start
+#    - name: to start nexus manually
+#      args:
+#        chdir: /nexus-3.70.1-02/bin
+#      command: ./nexus start
 
     - name: Create systemd file for nexus
       template:
@@ -71,4 +71,3 @@
         name: nexus
         enabled: yes
         state: started
-
