@@ -1,0 +1,7 @@
+  - job_name: "Jenkins and Nexus"
+
+    # metrics_path defaults to '/metrics'
+    # scheme defaults to 'http'.
+
+    static_configs:
+      - targets: ["13.202.146.231"]
