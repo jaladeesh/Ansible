@@ -4,32 +4,36 @@
   tasks:
   - name: To update packages
     command: apt update
+
   - name: To install jdk11
     apt:
       name: openjdk-11-jdk
       state: present
+
   - name: adding repo key
     apt_key:
       url: https://pkg.jenkins.io/debian/jenkins.io-2023.key
       state: present
+
   - name: adding repo
     apt_repository:
       repo: 'deb http://pkg.jenkins.io/debian-stable binary/'
       state: present
+
   - name: To update packages
     command: apt update
+
   - name: To install jenkins
     apt:
       name: jenkins
       state: present
-  - name: To start jenkins
+
+  - name: To start and enable jenkins
     service:
       name: jenkins
       state: started
-  - name: To enable jenkins
-    service:
-      name: jenkins
       enabled: yes
+
 
 #For additional security added to the jenkins
 # - name: Install firewall-d
