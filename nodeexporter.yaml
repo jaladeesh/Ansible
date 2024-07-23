@@ -1,0 +1,42 @@
+- hosts: slave1
+  become: yes
+  tasks:
+    - name: Installing node exporter
+      get_url:
+        url: "https://github.com/prometheus/node_exporter/releases/download/v1.8.2/node_exporter-1.8.2.linux-amd64.tar.gz"
+        dest: "/opt"
+    
+    - name: To extract the tar file
+      unarchive:
+        src: "/opt/node_exporter-1.8.2.linux-amd64.tar.gz"
+        dest: "/opt"
+        remote_src: yes
+
+    - name: To remove the tar file
+      file:
+        path: "/opt/node_exporter-1.8.2.linux-amd64.tar.gz"
+        state: absent
+    
+    - name: Create a system user for Node Exporter
+      user:
+        name: node_exporter
+        system: yes
+        shell: /sbin/nologin
+
+    - name: Move Node Exporter to /usr/local/bin
+      command: mv /opt/node_exporter-1.8.2.linux-amd64/node_exporter /usr/local/bin/node_exporter
+
+    - name: Create a Node Exporter service file
+      template:
+        src: ./node_exporter.service
+        dest: /etc/systemd/system/node_exporter.service
+
+    - name: Reload systemd to recognize the new service
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start Node Exporter service
+      systemd:
+        name: node_exporter
+        state: started
+        enabled: yes

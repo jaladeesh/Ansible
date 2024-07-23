@@ -1,0 +1,35 @@
+- hosts: slave2
+  become: yes
+  tasks:
+    - name: Updating pre requestics packages
+      command: apt-get install -y apt-transport-https software-properties-common wget
+
+    - name: Create a directory to import a GPG key
+      file:
+        path: /etc/apt/keyrings/
+        state: directory
+
+    - name: Import the GPG key into the directory
+      get_url:
+        url: wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+        dest: /etc/apt/keyrings/
+
+    - name: To add a repository for stable releases
+      command: echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+
+    - name: To add a repository for beta releases
+      command: echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com beta main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+
+    - name: To update the packages
+      command: apt-get update
+
+    - name: To install grafana
+      apt:
+        name: grafana
+        state: present
+
+    - name: To enable and start grafana service file
+      systemd:
+        name: grafana
+        enable: yes
+        state: started
