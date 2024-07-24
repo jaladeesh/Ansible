@@ -1,0 +1,116 @@
+---
+- name: Installation of Prometheus
+  hosts: slave2
+  become: true
+  tasks:
+    - name: Update the packages
+      apt:
+        upgrade: yes
+        update_cache: yes
+
+    - name:  Creating prometheus group
+      group:
+        name: prometheus
+        system: yes    
+
+    - name: Creating prometheus user
+      user:
+        name: prometheus
+        shell: /sbin/nologin
+        system: yes
+        group: prometheus
+
+    - name:  Creating required prometheus directory
+      file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+        - /etc/prometheus
+        - /var/lib/prometheus
+
+    - name: Download Prometheus
+      command: wget https://github.com/prometheus/prometheus/releases/download/v2.53.1/prometheus-2.53.1.linux-amd64.tar.gz
+      args: 
+        chdir: /tmp
+
+    - name: Extract prometheus tar file
+      unarchive:
+        src: /tmp/prometheus-2.53.1.linux-amd64.tar.gz
+        dest: /tmp  
+        remote_src: yes
+
+    - name: remove the tar file
+      file:
+        path: /tmp/prometheus-2.53.1.linux-amd64.tar.gz
+        state: absent
+
+    - name: Copy files to their destination
+      copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        remote_src: yes
+      with_items:
+        - { src: /tmp/prometheus-2.53.1.linux-amd64/prometheus, dest: /usr/local/bin/prometheus }
+        - { src: /tmp/prometheus-2.53.1.linux-amd64/promtool, dest: /usr/local/bin/promtool }
+        - { src: /tmp/prometheus-2.53.1.linux-amd64/consoles, dest: /etc/prometheus/consoles }
+        - { src: /tmp/prometheus-2.53.1.linux-amd64/console_libraries, dest: /etc/prometheus/console_libraries }
+        - { src: /tmp/prometheus-2.53.1.linux-amd64/prometheus.yml, dest: /etc/prometheus/prometheus.yml }
+
+    - name: Remove original files and directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - /tmp/prometheus-2.53.1.linux-amd64/prometheus
+        - /tmp/prometheus-2.53.1.linux-amd64/promtool
+        - /tmp/prometheus-2.53.1.linux-amd64/consoles
+        - /tmp/prometheus-2.53.1.linux-amd64/console_libraries
+        - /tmp/prometheus-2.53.1.linux-amd64/prometheus.yml
+    
+    - name: Change ownership of files and directories
+      file:
+        path: "{{ item.path }}"
+        owner: prometheus
+        group: prometheus
+        recurse: "{{ item.recurse | default(false) }}"
+      with_items:
+        - { path: /usr/local/bin/prometheus }
+        - { path: /usr/local/bin/promtool }
+        - { path: /etc/prometheus, recurse: true }
+        - { path: /etc/prometheus/consoles, recurse: true }
+        - { path: /etc/prometheus/console_libraries, recurse: true }
+        - { path: /var/lib/prometheus, recurse: true }
+
+    - name: Copy the prometheus configuration file
+      copy:
+        src: /home/ubuntu/ansible/prometheus.yml
+        dest: /etc/prometheus/prometheus.yml
+      notify:
+        - Reload prometheus
+    
+    - name: Create Systemd file for prometheus
+      template: 
+       src: /home/ubuntu/ansible/prometheus.service
+       dest: /etc/systemd/system/prometheus.service
+      notify:
+        - Reload systemd
+
+    - name: Enable prometheus service
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
+
+  handlers:
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+        name: prometheus  
+
+    - name: Reload prometheus
+      systemd: 
+        name: prometheus
+        state: restarted
+
+    
+

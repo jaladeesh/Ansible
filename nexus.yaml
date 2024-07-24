@@ -1,0 +1,75 @@
+- hosts: slave1
+  become: yes
+  tasks:
+    - name: Update apt packages
+      apt:
+        update_cache: yes
+
+    - name: Installation of Java 11
+      apt:
+        name: openjdk-11-jdk
+        state: present
+
+    - name: Create Nexus user
+      user:
+        name: nexus
+        shell: /bin/bash
+
+    - name: Downloading Nexus
+      get_url:
+        url: "https://download.sonatype.com/nexus/3/nexus-3.70.1-02-java11-unix.tar.gz"
+        dest: "/nexus-3.70.1-02-java11-unix.tar.gz"
+
+    - name: Extract the Nexus tar file
+      unarchive:
+        src: "/nexus-3.70.1-02-java11-unix.tar.gz"
+        dest: "/"
+        remote_src: yes
+
+    - name: removing tar file
+      file:
+        path: "/nexus-3.70.1-02-java11-unix.tar.gz"
+        state: absent
+
+    - name: Set ownership and group on Nexus directory to nexus
+      file:
+        path: "/nexus-3.70.1-02"
+        owner: "nexus"
+        group: "nexus"
+        state: directory
+        recurse: yes  
+
+    - name: Set ownership on Nexus to nexus on data directory
+      file:
+        path: "/sonatype-work"
+        owner: "nexus"
+        group: "nexus"
+        state: directory
+        recurse: yes
+
+    - name: Configure Nexus to run as the nexus user
+      lineinfile:
+        path: "/nexus-3.70.1-02/bin/nexus.rc"
+        line: "run_as_user=nexus"
+
+#    - name: to start nexus manually
+#      args:
+#        chdir: /nexus-3.70.1-02/bin
+#      command: ./nexus start
+
+    - name: Create systemd file for nexus
+      template:
+        src: ./nexus.service
+        dest: /etc/systemd/system/nexus.service
+
+    - name: Reload systemd to apply Nexus service
+      systemd:
+        daemon_reload: yes
+
+    - name: Enable and start Nexus service
+      systemd:
+        name: nexus
+        enabled: yes
+        state: started
+
+

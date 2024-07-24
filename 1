@@ -1,0 +1,14 @@
+- hosts: slaves
+  remote_user: ubuntu
+  become: yes
+  tasks:
+  - name: To update packages
+    command: apt update
+  - name: To install jdk8
+    ansible.builtin.dnf:
+      name: openjdk-8-jdk
+      state: present
+  - name: To install jre8
+    ansible.builtin.dnf:
+      name: openjdk-8-jre
+      state: present

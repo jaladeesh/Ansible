@@ -1,35 +1,61 @@
-- hosts: slave2
-  become: yes
+---
+- name: Installation of grafana
+  hosts: slave2
+  become: true
+  vars_files:
+   - grafana_vault.yaml
   tasks:
-    - name: Updating pre requestics packages
-      command: apt-get install -y apt-transport-https software-properties-common wget
+    - name: Install required dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - software-properties-common
+          - wget
+        state: present
+        update_cache: yes
 
-    - name: Create a directory to import a GPG key
+    - name: Create directory for Grafana GPG key
       file:
         path: /etc/apt/keyrings/
         state: directory
+        mode: '0755'
 
-    - name: Import the GPG key into the directory
-      get_url:
-        url: wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
-        dest: /etc/apt/keyrings/
+    - name: Download and add Grafana GPG key
+      shell: wget -q -O - https://apt.grafana.com/gpg.key | gpg --dearmor | sudo tee /etc/apt/keyrings/grafana.gpg > /dev/null
+      args:
+        creates: /etc/apt/keyrings/grafana.gpg
 
-    - name: To add a repository for stable releases
-      command: echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+    - name: Add Grafana APT repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com stable main"
+        state: present
+        filename: grafana
 
-    - name: To add a repository for beta releases
-      command: echo "deb [signed-by=/etc/apt/keyrings/grafana.gpg] https://apt.grafana.com beta main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+    - name: Update APT cache
+      apt:
+        update_cache: yes
 
-    - name: To update the packages
-      command: apt-get update
-
-    - name: To install grafana
+    - name: Install Grafana
       apt:
         name: grafana
         state: present
 
-    - name: To enable and start grafana service file
+    - name: Ensure Grafana service is enabled and started
       systemd:
-        name: grafana
-        enable: yes
+        name: grafana-server
+        enabled: yes
         state: started
+
+    - name: Change Grafana admin password
+      command: grafana-cli admin reset-admin-password {{ grafana_admin_password }}
+      environment:
+        GF_SECURITY_ADMIN_PASSWORD: "{{ grafana_admin_password }}"
+      notify: Restart Grafana
+      
+  handlers:
+    - name: Restart Grafana
+      systemd:
+        name: grafana-server
+        state: restarted 
+
+
